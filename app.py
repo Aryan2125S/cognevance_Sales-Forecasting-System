@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
 import sys
 from pathlib import Path
 
@@ -25,19 +25,35 @@ from src.data_preprocessing import preprocess_data
 import src.analyzer as analyzer
 import src.forecasting as forecasting
 
-# Set matplotlib style
-sns.set_theme(style="whitegrid")
-plt.rcParams['figure.figsize'] = (10, 5)
-plt.rcParams['font.family'] = 'sans-serif'
-
 # Custom CSS for premium aesthetics
 st.markdown("""
 <style>
+    /* Global Styles */
+    :root {
+        --primary-color: #A78BFA;
+        --secondary-color: #34D399;
+        --bg-color: #F9FAFB;
+        --text-color: #1F2937;
+        --card-bg: #FFFFFF;
+        --border-color: #E5E7EB;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --primary-color: #8B5CF6;
+            --secondary-color: #10B981;
+            --bg-color: #111827;
+            --text-color: #F9FAFB;
+            --card-bg: #1F2937;
+            --border-color: #374151;
+        }
+    }
+
     /* Styling headers */
     .main-header {
         font-size: 2.8rem;
         font-weight: 800;
-        background: linear-gradient(135deg, #4F46E5, #06B6D4);
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.5rem;
@@ -47,43 +63,39 @@ st.markdown("""
         color: #6B7280;
         margin-bottom: 2rem;
     }
+    
     /* Card design */
     .kpi-card {
-        background-color: #FFFFFF;
+        background-color: var(--card-bg);
         border-radius: 12px;
-        padding: 20px;
+        padding: 24px;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
-        border: 1px solid #E5E7EB;
+        border: 1px solid var(--border-color);
         text-align: center;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-bottom: 1rem;
     }
     .kpi-card:hover {
-        transform: translateY(-2px);
+        transform: translateY(-4px);
         box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02);
     }
     .kpi-value {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #1F2937;
-        margin-bottom: 4px;
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-color);
+        margin-bottom: 8px;
     }
     .kpi-label {
-        font-size: 0.85rem;
-        font-weight: 500;
+        font-size: 0.9rem;
+        font-weight: 600;
         color: #6B7280;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    /* Dark mode adjustments if detected */
+    
+    /* Ensure markdown text inherits correct colors in dark mode */
     @media (prefers-color-scheme: dark) {
-        .kpi-card {
-            background-color: #1F2937;
-            border-color: #374151;
-        }
-        .kpi-value {
-            color: #F9FAFB;
-        }
-        .kpi-label {
+        .sub-header, .kpi-label {
             color: #9CA3AF;
         }
     }
@@ -149,7 +161,7 @@ if page == "🏠 Home":
     with col1:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-value">{format_currency(kpi_dict['total_sales'])}</div>
+            <div class="kpi-value" style="color: #A78BFA;">{format_currency(kpi_dict['total_sales'])}</div>
             <div class="kpi-label">Total Sales</div>
         </div>
         """, unsafe_allow_html=True)
@@ -157,7 +169,7 @@ if page == "🏠 Home":
     with col2:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-value">{format_currency(kpi_dict['total_profit'])}</div>
+            <div class="kpi-value" style="color: #60A5FA;">{format_currency(kpi_dict['total_profit'])}</div>
             <div class="kpi-label">Total Profit</div>
         </div>
         """, unsafe_allow_html=True)
@@ -165,7 +177,7 @@ if page == "🏠 Home":
     with col3:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-value">{kpi_dict['total_orders']:,}</div>
+            <div class="kpi-value" style="color: #34D399;">{kpi_dict['total_orders']:,}</div>
             <div class="kpi-label">Total Orders</div>
         </div>
         """, unsafe_allow_html=True)
@@ -173,13 +185,13 @@ if page == "🏠 Home":
     with col4:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-value">{kpi_dict['total_quantity']:,}</div>
+            <div class="kpi-value" style="color: #FBBF24;">{kpi_dict['total_quantity']:,}</div>
             <div class="kpi-label">Total Items Sold</div>
         </div>
         """, unsafe_allow_html=True)
         
     with col5:
-        color = "#10B981" if kpi_dict['profit_margin'] >= 0 else "#EF4444"
+        color = "#34D399" if kpi_dict['profit_margin'] >= 0 else "#F87171"
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-value" style="color: {color};">{kpi_dict['profit_margin']:.2f}%</div>
@@ -198,16 +210,12 @@ if page == "🏠 Home":
         best_sub = subcat_perf.iloc[0]
         worst_sub = subcat_perf.iloc[-1]
         
-        st.markdown(f"""
-        * **Top Performing Category Segment**: Chairs (Sales: **{format_currency(best_sub['Sales'])}**, Profit: **{format_currency(best_sub['Profit'])}**)
-        * **Low Profitability Alert**: Bookcases and Tables have high sales volume but consistently low profits (Tables show net loss).
-        """)
+        st.info(f"**Top Performing Category Segment:** Chairs (Sales: **{format_currency(best_sub['Sales'])}**, Profit: **{format_currency(best_sub['Profit'])}**)")
+        st.warning("**Low Profitability Alert:** Bookcases and Tables have high sales volume but consistently low profits (Tables show net loss).")
         
     with c_right:
-        st.markdown("""
-        * **Seasonal Trends**: Peak sales occur in November and December due to Q4 holidays.
-        * **Regional Strength**: The **West** region generates the highest sales and profit margin, followed closely by the **East**.
-        """)
+        st.success("**Seasonal Trends:** Peak sales occur in November and December due to Q4 holidays.")
+        st.success("**Regional Strength:** The **West** region generates the highest sales and profit margin, followed closely by the **East**.")
 
 # =====================================================================
 # PAGE 2: DATASET EXPLORER PAGE
@@ -274,10 +282,15 @@ elif page == "📈 Sales Analysis":
     # KPI Grid for descriptive analysis
     kpi_dict = analyzer.get_kpis(analysis_df)
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Filtered Sales", format_currency(kpi_dict["total_sales"]))
-    col2.metric("Filtered Profit", format_currency(kpi_dict["total_profit"]))
-    col3.metric("Filtered Orders", f"{kpi_dict['total_orders']:,}")
-    col4.metric("Profit Margin", f"{kpi_dict['profit_margin']:.2f}%")
+    with col1:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color: #A78BFA;">{format_currency(kpi_dict["total_sales"])}</div><div class="kpi-label">Filtered Sales</div></div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color: #60A5FA;">{format_currency(kpi_dict["total_profit"])}</div><div class="kpi-label">Filtered Profit</div></div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color: #34D399;">{kpi_dict["total_orders"]:,}</div><div class="kpi-label">Filtered Orders</div></div>', unsafe_allow_html=True)
+    with col4:
+        color = "#34D399" if kpi_dict['profit_margin'] >= 0 else "#F87171"
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color: {color};">{kpi_dict["profit_margin"]:.2f}%</div><div class="kpi-label">Profit Margin</div></div>', unsafe_allow_html=True)
     
     st.write("---")
     
@@ -287,62 +300,38 @@ elif page == "📈 Sales Analysis":
     with row1_col1:
         st.subheader("Monthly Sales & Profit Trend")
         monthly_trend = analyzer.get_monthly_sales_trend(analysis_df)
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(monthly_trend["Year-Month"], monthly_trend["Sales"], label="Sales", marker='o', color="#4F46E5", linewidth=2.5)
-        ax.plot(monthly_trend["Year-Month"], monthly_trend["Profit"], label="Profit", marker='x', color="#EF4444", linewidth=1.5)
-        
-        # Display monthly labels nicely
-        n_ticks = len(monthly_trend)
-        step = max(1, n_ticks // 8)
-        ax.set_xticks(monthly_trend["Year-Month"][::step])
-        ax.set_xticklabels(monthly_trend["Year-Month"][::step], rotation=45)
-        
-        ax.set_ylabel("USD ($)")
-        ax.legend()
-        st.pyplot(fig)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=monthly_trend["Year-Month"], y=monthly_trend["Sales"], mode='lines+markers', name='Sales', line=dict(color='#A78BFA', width=3)))
+        fig.add_trace(go.Scatter(x=monthly_trend["Year-Month"], y=monthly_trend["Profit"], mode='lines+markers', name='Profit', line=dict(color='#34D399', width=3)))
+        fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
         
     with row1_col2:
         st.subheader("Performance by Sub-Category")
         subcat = analyzer.get_subcategory_performance(analysis_df)
-        fig, ax = plt.subplots(figsize=(10, 5))
-        x = np.arange(len(subcat))
-        width = 0.35
-        
-        ax.bar(x - width/2, subcat["Sales"], width, label="Sales", color="#636EFA")
-        ax.bar(x + width/2, subcat["Profit"], width, label="Profit", color="#EF553B")
-        
-        ax.set_xticks(x)
-        ax.set_xticklabels(subcat["Sub-Category"])
-        ax.set_ylabel("USD ($)")
-        ax.legend()
-        st.pyplot(fig)
+        fig = go.Figure(data=[
+            go.Bar(name='Sales', x=subcat["Sub-Category"], y=subcat["Sales"], marker_color='#60A5FA'),
+            go.Bar(name='Profit', x=subcat["Sub-Category"], y=subcat["Profit"], marker_color='#F472B6')
+        ])
+        fig.update_layout(barmode='group', margin=dict(l=0, r=0, t=30, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
         
     row2_col1, row2_col2 = st.columns(2)
     
     with row2_col1:
         st.subheader("Sales and Profit by Region")
         reg_perf = analyzer.get_regional_performance(analysis_df)
-        fig, ax = plt.subplots(figsize=(10, 5))
-        sns.barplot(data=reg_perf, x="Region", y="Sales", color="#06B6D4", label="Sales", ax=ax)
-        # Overlay line plot for profit
-        ax2 = ax.twinx()
-        ax2.plot(reg_perf["Region"], reg_perf["Profit"], color="#B91C1C", marker="o", label="Profit", linewidth=2)
-        ax2.set_ylabel("Profit ($)")
-        ax.set_ylabel("Sales ($)")
-        
-        # Combine legends
-        lines, labels = ax.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax.legend(lines + lines2, labels + labels2, loc="upper right")
-        st.pyplot(fig)
+        fig = px.bar(reg_perf, x="Region", y="Sales", color="Region", color_discrete_sequence=px.colors.qualitative.Pastel)
+        fig.add_trace(go.Scatter(x=reg_perf["Region"], y=reg_perf["Profit"], mode='lines+markers', name='Profit', line=dict(color='#F87171', width=3)))
+        fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
         
     with row2_col2:
         st.subheader("Sales by Customer Segment")
         seg_perf = analyzer.get_segment_performance(analysis_df)
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.pie(seg_perf["Sales"], labels=seg_perf["Segment"], autopct='%1.1f%%', colors=["#4F46E5", "#3B82F6", "#93C5FD"], startangle=90)
-        ax.axis('equal')
-        st.pyplot(fig)
+        fig = px.pie(seg_perf, values='Sales', names='Segment', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+        fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
         
     st.write("---")
     
@@ -352,22 +341,20 @@ elif page == "📈 Sales Analysis":
     with row3_col1:
         st.subheader("Impact of Discounts on Profit Margin")
         disc_df = analyzer.get_discount_impact(analysis_df)
-        fig, ax = plt.subplots(figsize=(10, 5))
-        sns.lineplot(data=disc_df, x="Discount", y="Profit Margin (%)", marker="o", color="#D97706", linewidth=2, ax=ax)
-        ax.axhline(0, color="black", linestyle="--", linewidth=1)
-        ax.set_xlabel("Discount Rate (e.g. 0.2 = 20%)")
-        ax.set_ylabel("Profit Margin (%)")
-        st.pyplot(fig)
+        fig = px.line(disc_df, x="Discount", y="Profit Margin (%)", markers=True)
+        fig.update_traces(line=dict(color="#FBBF24", width=3))
+        fig.add_hline(y=0, line_dash="dash", line_color="black")
+        fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
         
     with row3_col2:
         st.subheader("Top 5 Selling Products")
         top_prod = analyzer.get_top_products(analysis_df, metric="Sales", n=5)
-        fig, ax = plt.subplots(figsize=(10, 5))
         # Shorten names for plotting
-        short_names = [name[:30] + "..." if len(name) > 30 else name for name in top_prod["Product Name"]]
-        sns.barplot(x=top_prod["Sales"], y=short_names, palette="viridis", ax=ax)
-        ax.set_xlabel("Total Sales ($)")
-        st.pyplot(fig)
+        top_prod["Product Short Name"] = [name[:30] + "..." if len(name) > 30 else name for name in top_prod["Product Name"]]
+        fig = px.bar(top_prod, x="Sales", y="Product Short Name", orientation='h', color="Sales", color_continuous_scale="Purp")
+        fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), yaxis={'categoryorder':'total ascending'}, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", coloraxis_showscale=False)
+        st.plotly_chart(fig, use_container_width=True)
 
 # =====================================================================
 # PAGE 4: SALES FORECASTING PAGE
@@ -380,7 +367,6 @@ elif page == "🔮 Sales Forecasting":
     monthly_series = forecasting.prepare_time_series(df)
     
     # 2. Train Model and Get Predictions & Metrics
-    # Split: 80% train, 20% test chronologically.
     model, train_df, test_df, metrics = forecasting.train_forecast_model(monthly_series)
     
     # Model details card
@@ -389,86 +375,91 @@ elif page == "🔮 Sales Forecasting":
     1. **Monthly Aggregation**: Individual transactions are summed into a single monthly sales series.
     2. **Features**:
        - **Time Index**: A sequential number (1, 2, 3...) to capture the long-term upward or downward trend.
-       - **cyclical seasonality**: `Month Sin` and `Month Cos` derived from `sin(2*pi*month/12)` and `cos(2*pi*month/12)` to model annual seasonal cycles without overfitting.
+       - **Cyclical Seasonality**: `Month Sin` and `Month Cos` derived from `sin(2*pi*month/12)` and `cos(2*pi*month/12)` to model annual seasonal cycles without overfitting.
     3. **Chronological Splitting**: Shuffling time-series data creates target leakage. Instead, the model is trained on the first **80%** of calendar months and evaluated on the latest **20%** chronological months.
     """)
     
     st.subheader("1. Model Performance (Test Set Evaluation)")
     
     col1, col2, col3 = st.columns(3)
-    col1.metric(
-        label="Mean Absolute Error (MAE)",
-        value=f"${metrics['MAE']:,.2f}",
-        help="The average absolute difference between the predicted and actual sales. Lower is better."
-    )
-    col2.metric(
-        label="Root Mean Squared Error (RMSE)",
-        value=f"${metrics['RMSE']:,.2f}",
-        help="Penalizes larger forecast errors more heavily. Lower is better."
-    )
-    col3.metric(
-        label="R² Score (Coefficient of Determination)",
-        value=f"{metrics['R2']:.4f}",
-        help="Proportion of the monthly sales variance explained by the model trend and seasonal components."
-    )
+    with col1:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color: #F87171;">${metrics["MAE"]:,.2f}</div><div class="kpi-label">Mean Absolute Error</div></div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color: #FBBF24;">${metrics["RMSE"]:,.2f}</div><div class="kpi-label">Root Mean Squared Error</div></div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color: #34D399;">{metrics["R2"]:.4f}</div><div class="kpi-label">R² Score</div></div>', unsafe_allow_html=True)
     
     st.write("---")
     
     # Model Evaluation Plot
     st.subheader("2. Model Predictions vs Historical Actuals")
     
-    fig, ax = plt.subplots(figsize=(12, 5))
-    ax.plot(train_df["Order Date"], train_df["Sales"], label="Actual Sales (Train)", color="#1F2937", marker="o", linewidth=2)
-    ax.plot(train_df["Order Date"], train_df["Predicted_Sales"], label="Predicted Sales (Train)", color="#636EFA", linestyle="--")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=train_df["Order Date"], y=train_df["Sales"], mode='lines+markers', name='Actual Sales (Train)', line=dict(color='#9CA3AF')))
+    fig.add_trace(go.Scatter(x=train_df["Order Date"], y=train_df["Predicted_Sales"], mode='lines', name='Predicted Sales (Train)', line=dict(color='#A78BFA', dash='dash')))
+    fig.add_trace(go.Scatter(x=test_df["Order Date"], y=test_df["Sales"], mode='lines+markers', name='Actual Sales (Test)', line=dict(color='#34D399')))
+    fig.add_trace(go.Scatter(x=test_df["Order Date"], y=test_df["Predicted_Sales"], mode='lines', name='Predicted Sales (Test)', line=dict(color='#F87171', dash='dash')))
     
-    ax.plot(test_df["Order Date"], test_df["Sales"], label="Actual Sales (Test)", color="#10B981", marker="o", linewidth=2)
-    ax.plot(test_df["Order Date"], test_df["Predicted_Sales"], label="Predicted Sales (Test)", color="#EF4444", linestyle="--")
-    
-    ax.set_ylabel("Monthly Sales ($)")
-    ax.set_title("Training and Testing Fit - Actual vs Predicted Sales")
-    ax.legend()
-    st.pyplot(fig)
+    fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig, use_container_width=True)
     
     # Comparison table
     st.subheader("Test Predictions Comparison Table")
     eval_table = test_df[["Order Date", "Sales", "Predicted_Sales"]].copy()
-    eval_table["Sales"] = eval_table["Sales"].map(format_currency)
-    eval_table["Predicted_Sales"] = eval_table["Predicted_Sales"].map(format_currency)
-    eval_table["Error"] = (test_df["Sales"] - test_df["Predicted_Sales"]).map(format_currency)
-    eval_table = eval_table.rename(columns={"Sales": "Actual Sales", "Predicted_Sales": "Predicted Sales"})
-    st.dataframe(eval_table, use_container_width=True)
+    eval_table["Error"] = eval_table["Sales"] - eval_table["Predicted_Sales"]
+    
+    # Formatting for display
+    display_eval_table = eval_table.copy()
+    display_eval_table["Sales"] = display_eval_table["Sales"].map(format_currency)
+    display_eval_table["Predicted_Sales"] = display_eval_table["Predicted_Sales"].map(format_currency)
+    display_eval_table["Error"] = display_eval_table["Error"].map(format_currency)
+    display_eval_table = display_eval_table.rename(columns={"Sales": "Actual Sales", "Predicted_Sales": "Predicted Sales"})
+    st.dataframe(display_eval_table, use_container_width=True)
     
     st.write("---")
     
     # 3. Future Forecasting Section
     st.subheader("3. Future Sales Forecast")
     
-    # Horizon slider
     horizon = st.slider("Select Forecast Horizon (Months):", min_value=3, max_value=12, value=6)
     
-    # Generate future forecast
     last_row = monthly_series.iloc[-1]
     last_date = last_row["Order Date"]
-    # Re-engineer to find final Time Index
     all_engineered = forecasting.engineer_features(monthly_series)
     last_time_index = all_engineered.iloc[-1]["Time Index"]
     
     future_forecast = forecasting.generate_future_forecast(model, last_date, last_time_index, horizon)
     
-    # Future Plot (Combined view)
     st.write(f"Plotting {horizon}-Month Out-of-Sample Forecast:")
     
-    fig, ax = plt.subplots(figsize=(12, 5))
-    ax.plot(monthly_series["Order Date"], monthly_series["Sales"], label="Historical Sales", color="#1F2937", marker="o", linewidth=2)
-    ax.plot(future_forecast["Order Date"], future_forecast["Sales"], label="Future Forecast", color="#F59E0B", marker="s", linestyle="--", linewidth=2)
-    ax.fill_between(future_forecast["Order Date"], future_forecast["Sales"] * 0.85, future_forecast["Sales"] * 1.15, color="#F59E0B", alpha=0.15, label="Estimate Boundary (±15%)")
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=monthly_series["Order Date"], y=monthly_series["Sales"], mode='lines+markers', name='Historical Sales', line=dict(color='#9CA3AF')))
+    fig2.add_trace(go.Scatter(x=future_forecast["Order Date"], y=future_forecast["Sales"], mode='lines+markers', name='Future Forecast', line=dict(color='#FBBF24', dash='dash')))
     
-    ax.set_ylabel("Monthly Sales ($)")
-    ax.set_title("Historical Monthly Sales and Future Predictions")
-    ax.legend()
-    st.pyplot(fig)
+    # Add confidence bounds visualization
+    fig2.add_trace(go.Scatter(
+        name='Upper Bound',
+        x=future_forecast["Order Date"],
+        y=future_forecast["Sales"] * 1.15,
+        mode='lines',
+        marker=dict(color="#444"),
+        line=dict(width=0),
+        showlegend=False
+    ))
+    fig2.add_trace(go.Scatter(
+        name='Estimate Boundary (±15%)',
+        x=future_forecast["Order Date"],
+        y=future_forecast["Sales"] * 0.85,
+        marker=dict(color="#444"),
+        line=dict(width=0),
+        mode='lines',
+        fillcolor='rgba(251, 191, 36, 0.2)',
+        fill='tonexty'
+    ))
     
-    # Forecast Table
+    fig2.update_layout(margin=dict(l=0, r=0, t=30, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig2, use_container_width=True)
+    
     st.write("Forecast Predictions Table:")
     display_forecast = future_forecast[["Order Date", "Sales"]].copy()
     display_forecast["Forecast Sales"] = display_forecast["Sales"].map(format_currency)
@@ -485,17 +476,14 @@ elif page == "💡 Business Insights":
     st.markdown("<div class='sub-header'>Dynamic business analysis and recommendations generated from the actual stores sales dataset.</div>", unsafe_allow_html=True)
     
     # Dynamically compute insight variables
-    # 1. Years
     yr_df = analyzer.get_yearly_sales(df)
     best_yr = yr_df.loc[yr_df["Sales"].idxmax()]
     worst_yr = yr_df.loc[yr_df["Sales"].idxmin()]
     
-    # 2. Months
     monthly_trend = analyzer.get_monthly_sales_trend(df)
     best_month = monthly_trend.loc[monthly_trend["Sales"].idxmax()]
     worst_month = monthly_trend.loc[monthly_trend["Sales"].idxmin()]
     
-    # 3. Regions & Segments
     reg_perf = analyzer.get_regional_performance(df)
     best_reg = reg_perf.iloc[0]
     best_reg_profit = reg_perf.loc[reg_perf["Profit"].idxmax()]
@@ -503,14 +491,11 @@ elif page == "💡 Business Insights":
     seg_perf = analyzer.get_segment_performance(df)
     best_seg = seg_perf.iloc[0]
     
-    # 4. Sub-Categories
     subcat_perf = analyzer.get_subcategory_performance(df)
     best_sub = subcat_perf.iloc[0]
     profitable_sub = subcat_perf.sort_values("Profit", ascending=False).iloc[0]
     loss_making = subcat_perf[subcat_perf["Profit"] < 0]
     
-    # 5. Future Trend Direction
-    # Train forecasting model to calculate direction
     monthly_series = forecasting.prepare_time_series(df)
     model, _, _, _ = forecasting.train_forecast_model(monthly_series)
     all_engineered = forecasting.engineer_features(monthly_series)
@@ -521,13 +506,12 @@ elif page == "💡 Business Insights":
     avg_forecast = future_forecast["Sales"].mean()
     
     if avg_forecast > avg_recent:
-        forecast_direction = "Expected Upward Trend"
+        forecast_direction = "Expected Upward Trend 📈"
         forecast_desc = "The model forecasts that average monthly sales will increase compared to the recent 12-month historical average."
     else:
-        forecast_direction = "Expected Softening / Downward Trend"
+        forecast_direction = "Expected Softening / Downward Trend 📉"
         forecast_desc = "The model forecasts a decline in average monthly sales compared to the recent 12-month historical average, indicating potential softening demand."
 
-    # Render Insights
     st.subheader("📊 Dynamic Data Insights")
     
     col1, col2 = st.columns(2)
@@ -555,15 +539,15 @@ elif page == "💡 Business Insights":
     st.subheader("⚠️ Profitability Risks Alert")
     if not loss_making.empty:
         for idx, row in loss_making.iterrows():
-            st.warning(f"🚨 **Loss-Making Product Sub-Category**: **{row['Sub-Category']}** generated **{format_currency(row['Sales'])}** in sales, but resulted in a net profit loss of **{format_currency(row['Profit'])}**.")
+            st.error(f"🚨 **Loss-Making Product Sub-Category**: **{row['Sub-Category']}** generated **{format_currency(row['Sales'])}** in sales, but resulted in a net profit loss of **{format_currency(row['Profit'])}**.")
     else:
         st.success("✅ All sub-categories showed net positive profits over the historical range.")
         
     st.write("---")
     
     st.subheader("🔮 6-Month Forecasting Outlook")
-    st.metric("Forecast Outlook Direction", forecast_direction, help=forecast_desc)
-    st.write(forecast_desc)
+    st.markdown(f"**{forecast_direction}**")
+    st.info(forecast_desc)
     
     st.write("---")
     
@@ -591,7 +575,7 @@ elif page == "ℹ️ About Project":
     st.markdown("<div class='sub-header'>Project context, metadata, and intern information.</div>", unsafe_allow_html=True)
     
     st.subheader("Project Context")
-    st.write("""
+    st.info("""
     This **Sales Forecasting System** is built as a Level 2 Intermediate Data Science and Data Analytics Internship Project.
     It demonstrates end-to-end data analysis workflows from extraction and preprocessing, through to modeling, evaluation, and dashboard deployment.
     """)
