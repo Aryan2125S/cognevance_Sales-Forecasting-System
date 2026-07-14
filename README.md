@@ -185,6 +185,6 @@ To host this system on Streamlit Community Cloud:
 ---
 
 ## Author
-* **Name:** Vinit Sahani  
+* **Name:** Aryan Sagar  
 * **Role:** Data Science Intern  
 * **Internship Level:** Level 2 Intermediate  

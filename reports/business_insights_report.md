@@ -1,6 +1,6 @@
 # Sales Forecasting System - Business Insights Report
 
-**Author:** Vinit Sahani  
+**Author:** Aryan Sagar  
 **Role:** Senior Data Scientist & Project Reviewer (Internship Submission)  
 **Date:** July 12, 2026  
 

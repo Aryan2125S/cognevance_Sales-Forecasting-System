@@ -592,7 +592,7 @@ elif page == "ℹ️ About Project":
     
     st.subheader("Intern Information")
     st.markdown("""
-    * **Name**: Vinit Sahani
+    * **Name**: Aryan Sagar
     * **Role**: Data Science Intern
     * **Project Scope**: Sales Analysis & Time-Series Demand Forecasting Dashboard
     * **Code Repository**: GitHub-Ready
